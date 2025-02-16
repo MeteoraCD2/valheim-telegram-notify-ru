@@ -1,37 +1,35 @@
 # Valheim Notify
 
-Valheim Notify is a simple bash script that sends server notifications to a telegram chat. It is aimed to be simple to use and should run on most Linux flavours.
+Valheim Notify — это простой скрипт на bash, который отправляет уведомления с сервера в телеграм-чат. Он создан для простоты использования и должен работать на большинстве дистрибутивов Linux.
 
-## Supported notifications
-The script only knows of 8 events that can be parsed from the server console log:
-1. Player joins the server
-2. Player disconnects from the server
-3. Player (re)spawns
-4. Player dies
-5. All online players take some zzz's in the night and a new day begins (server skips the remaining night time)
-6. A random event is triggered, see https://valheim.fandom.com/wiki/Events 
-7. Server booting and loading a world
-8. Server shutting down
+## Поддерживаемые уведомления
+Скрипт распознает 8 событий, которые можно извлечь из журнала консоли сервера:
+1. Игрок присоединяется к серверу
+2. Игрок отключается от сервера
+3. Игрок (пере)рождается
+4. Игрок погибает
+5. Все онлайн игроки засыпают ночью, и начинается новый день (сервер пропускает оставшееся время ночи)
+6. Срабатывает случайное событие, см. https://valheim.fandom.com/wiki/Events 
+7. Запуск сервера и загрузка мира
+8. Отключение сервера
+9. 
+## Предварительные требования для Telegram
+Вам нужно создать телеграм-бота, добавить его в чат и получить ID этого чата.
+- Создайте телеграм-бота, следуя [этим инструкциям](https://core.telegram.org/bots#6-botfather) и скопируйте API-токен
+- Добавьте бота в чат в Telegram
+- В браузере откройте страницу ``https://api.telegram.org/bot<API-token>/getUpdates`` и запомните ID чата
 
-## Telegram prerequisites
-You need to create a Telegram bot, add it to a chat and retrieve the ID of the chat.
-- Create a Telegram bot, see [these instructions](https://core.telegram.org/bots#6-botfather) and copy the API token
-- Add the bot to a chat in Telegram
-- In a browser, open this page ``https://api.telegram.org/bot<API-token>/getUpdates`` and note the chat ID
+## Установка и настройка
+- Разместите скрипты vh-notify.sh и userlist.txt на вашем сервере
+- В скрипте vh-notify.sh настройте следующие значения:
+  - CHATID: ID телеграм-чата, куда будут отправляться уведомления
+  - KEY: API-токен вашего телеграм-бота
+  - LOGFILE: расположение файла журнала консоли сервера Valheim
+- Убедитесь, что vh-notify.sh исполняемый, например, выполните ``chmod +x vh-notify.sh``
+- ~~Добавьте 64-битные Steam ID с соответствующими именами пользователей в usernames.txt~~ Больше не требуется, скрипт попытается найти ID и имена пользователей. Однако, если вы хотите, вы можете изменить имена или добавить ID и имена, сам скрипт не перезапишет существующие данные в этом файле.
+- Запустите скрипт командой ``./vh-notify.sh &``
+- Для автоматического запуска при загрузке системы добавьте в cron с помощью ``crontab -e`` и затем добавьте строку (замените на фактическое расположение скрипта) ``@reboot /home/vhserver/valheim-notify/vh-notify.sh &``
 
-## Installation & configuration
-
-- Place the scripts vh-notify.sh and userlist.txt on your server 
-- In the vh-notify.sh script, configure these values
-  - CHATID: the ID of the Telegram chat that the notifications will be sent to
-  - KEY: the API token of your Telegram bot
-  - LOGFILE: the location of your Valheim server console log
-- Make sure vh-notify.sh is executable, e.g. do ``chmod +x vh-notify.sh``
-- ~~Add the 64-bit Steam IDs with corresponding usernames to usernames.txt~~ No longer needed, the script will attempt to lookup the IDs and the usernames. But if you like you can change the names or add IDs and names, the script will not overwrite existing data in this file.
-- Start the script with ``./vh-notify.sh &``
-- To start automatically on boot, add to cron with ``crontab -e`` and then add a line (replace with actual location of the script) ``@reboot /home/vhserver/valheim-notify/vh-notify.sh &``
-
-## Steam usernames
-The connect and disconnect messages in the server log mention the 64bit Steam ID of the player that connects to the server. The script will attempt to lookup the Steam ID and store the ID with username in usernames.txt. If the script cannot find a matching Steam ID in usernames.txt, it will report ``Unknown (Steam ID)`` in the notification.
-
-The death and (re)spawn messages in the log mention the Valheim character name that the player entered the world with, so the script parses these from the log directly.
+## Имена пользователей Steam
+Сообщения о подключении и отключении в журнале сервера упоминают 64-битный Steam ID игрока, подключающегося к серверу. Скрипт попытается найти этот Steam ID и сохранит ID вместе с именем пользователя в usernames.txt. Если скрипт не найдет соответствующий Steam ID в usernames.txt, он сообщит ``Неизвестно (Steam ID)`` в уведомлении.
+Сообщения о смерти и (пере)рождении в журнале упоминают имя персонажа Valheim, с которым игрок вошел в мир, поэтому скрипт непосредственно парсит их из журнала.
