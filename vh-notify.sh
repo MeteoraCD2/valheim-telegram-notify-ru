@@ -1,37 +1,54 @@
 #!/bin/bash
 
-### The script only knows of 8 events that can be parsed from the server console log
-### 1. Player joins
-### 2. Player disconnects
-### 3. Player (re)spawns
-### 4. Player dies
-### 5. All online players take some zzz's in the night and a new day begins
-### 6. A random event is triggered, see https://valheim.fandom.com/wiki/Events
-### 7. Server booting and loading a world
-### 8. Server shutting down
+### Valheim Notify — это простой BASH-скрипт, который отправляет уведомления сервера Valheim в чат Telegram. Он нацелен на простоту использования и должен работать на большинстве разновидностей Linux.
+### Скрипт знает только о 8 событиях, которые можно проанализировать из журнала консоли сервера:
+### 1. Игрок присоединился.
+### 2. Игрок отключился.
+### 3. Игрок заспавнился.
+### 4. Игрок умер.
+### 5. Все игроки в сети легли спать, чтобы пропустить ночь, и начался новый день.
+### 6. Запускается случайное событие, см. https://valheim.fandom.com/wiki/Events
+### 7. Запуск сервера и загрузка мира.
+### 8. Выключение сервера.
 ###
-### You need to configure CHATID, KEY and LOGFILE
+### Вам нужно настроить CHATID, THREAD_ID, KEY и LOGFILE
 ###
-### The script will lookup the 64bit Steam ids that connect to the server
-### The corresponding Steam name is stored in usernames.txt
-### You can add Steam ids and (change) names manually too, the script will not overwrite
-### For character death and (re)spawn the Valheim character name is parsed from the log message
+### Скрипт будет искать 64-битные Steam ID, которые подключаются к серверу
+### Соответствующее имя Steam хранится в usernames.txt
+### Вы также можете вручную добавлять Steam ID и (изменять) имена, скрипт не будет перезаписать
+### Для смерти персонажа и (возрождения) имя персонажа Valheim анализируется из сообщения журнала
 ###
-### Run this script in the background and/or add it to cron (crontab -e), then
+### Запустите этот скрипт в фоновом режиме и/или добавьте его в cron (crontab -e), затем
 ### @reboot /home/vhserver/valheim-notify/vh-notify.sh &
 
-CHATID=""
-KEY=""
-LOGFILE="/home/vhserver/log/console/vhserver-console.log"
+### Не забудьте добавить в скрипт запуска сервера в строку ./valheim_server.x86_64 ключ: -logfile "/Valheim-server/valheim_log.txt", где "/Valheim-server/valheim_log.txt" - путь к файлу лога.
 
-USERLIST="usernames.txt"
+### Переменные:
+### CHATID="-0000000000000" - Укажите ID чата
+### THREAD_ID="1234" - Укажите ID потока, если необходимо отправлять в конкретную тему. Если это обычный чат, можно не указывать.
+### KEY="1231231231:XXxxXXxxXXxxXXxx" - ID бота
+### LOGFILE="./Valheim/logs/valheim_log.txt" - Путь к файлу лога
+
+CHATID="" # Укажите ID чата
+THREAD_ID=""  # Укажите ID потока, если необходимо отправлять в конкретную тему. Можно не указывать.
+KEY="" # ID бота
+LOGFILE="/Valheim-server/valheim_log.txt" # путь к файлу лога
+
+USERLIST="/Valheim-server/usernames.txt"
 TIMEOUT="10"
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 STEAMURL="https://steamcommunity.com/profiles/"
 VALHEIMVERSION="Not set"
 
 send(){
-    curl -s --max-time $TIMEOUT -d "chat_id=$CHATID&disable_web_page_preview=1&text=$1" $URL > /dev/null
+    local url="$URL"
+    local data="chat_id=$CHATID&disable_web_page_preview=1&text=$1"
+
+    if [ -n "$THREAD_ID" ]; then
+        data="$data&message_thread_id=$THREAD_ID"
+    fi
+
+    curl -s --max-time $TIMEOUT -d "$data" "$url" > /dev/null
 }
 
 addcharname(){
@@ -134,22 +151,22 @@ while read line ; do
         fi
 
         if [[ $CLINE == *"handshake"* ]]; then
-            send "${CHARNAME} is joining the server"
+            send "${CHARNAME} подключился к серверу"
 
         elif [[ $CLINE == *"Closing"* ]]; then
-            send "$CHARNAME has disconnected from the server"
+            send "$CHARNAME отключился от сервера"
 
         elif [[ $line == *"Load world"* ]]; then
             WORLDNAME=$(echo "$line" | grep -oP 'Load world \K(.+)')
-	    send "Server booted (version $VALHEIMVERSION) and loaded world $WORLDNAME"
+	    send "Сервер запустился (version $VALHEIMVERSION) и загрузил мир $WORLDNAME"
 
         elif [[ $line == *"day:"* ]]; then
             DAY=$(echo "$line" | grep -oP 'day:\K(\d+)')
 	    DAY=$(($DAY + 1))
-            send "All players sleep through the night. It is now day $DAY"
+            send "Все игроки легли спать. Наступил день $DAY"
 
         elif [[ $line == *"OnApplicationQuit"* ]]; then
-            send "Server is shutting down"
+            send "Сервер выключился."
 
         elif [[ $CLINE == *"Random event"* ]]; then
             EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
@@ -165,14 +182,13 @@ while read line ; do
 
             # line ending match on 0:0 does not seem to work, this does
             if [[ $line == *": 0:"* ]]; then
-                send "$CHARNAME has just died"
+                send "$CHARNAME погиб."
 
             else
-                send "$CHARNAME has just spawned"
+                send "$CHARNAME заспавнился."
 
             fi
 
         fi
     fi
 done
-
