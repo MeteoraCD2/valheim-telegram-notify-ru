@@ -207,7 +207,7 @@ while read line ; do
         elif [[ $CLINE == *"Random event"* ]]; then
             EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
             EVENTMSG="$(eventmessage ${EVENT})"
-            send $'Random event triggered!\n'"$EVENTMSG"
+            send $'Начался рейд!\n'"$EVENTMSG"
 
         elif [[ $CLINE == *"Valheim version"* ]]; then
             VALHEIMVERSION=$(echo "$line" | grep -oP 'Valheim version:\K(.+)')
