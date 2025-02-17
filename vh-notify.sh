@@ -85,43 +85,79 @@ eventmessage(){
     case $1 in
     
         "army_eikthyr")
-            echo $'Eikthyr rallies the creatures of the forest.\nA 1:30 minute raid of Boars and Necks.'
+            echo $'Эйктюр объединяет существ леса.'
             ;;
             
         "army_theelder")
-            echo $'The forest is moving...\nA 2 minute raid of Greydwarfs, Greydwarf brutes and Greydwarf shamans'
+            echo $'Лес движется...'
             ;;
             
         "army_bonemass")
-            echo $'A foul smell from the swamp\nA 2:30 minute raid of Draugr and Skeletons'
+            echo $'Вонь с болот.'
             ;;
         
         "army_moder")
-            echo $'A cold wind blows from the mountains\nA 2:30 minute raid of Drakes and Freezing on the area'
+            echo $'Холодный ветер дует с гор.'
             ;;
         
         "army_goblin")
-            echo $'The horde is attacking\nA 2 minute raid of Fulings, Fuling Berserkers and Fuling shamans'
+            echo $'Орда атакует'
             ;;
         
         "foresttrolls")
-            echo $'The ground is shaking\nA 1:20 minute raid of Trolls'
+            echo $'Земля трясется.'
             ;;
-            
+        
         "blobs")
-            echo $'A foul smell from the swamp\nA 2 minute raid of Blobs and Oozers'
+            echo $'Вонь с болот.'
             ;;
         
         "skeletons")
-            echo $'Skeleton Surprise\nA 2 minute raid of Skeletons and Rancid remains'
+            echo $'Незваные кости.'
             ;;
             
         "surtlings")
-            echo $'There\'s a smell of sulfur in the air\nA 2 minute raid of Surtlings'
+            echo $'В воздухе висит запах серы...'
             ;;
-                    
+        
+        "army_charredspawner")
+            echo $'Восстание мертвецов.'
+            ;;
+        
+        "army_charred")
+            echo $'Марш армии мертвых.'
+            ;;
+        
         "wolves")
-            echo $'You are being hunted\nA 2 minute raid of Wolves'
+            echo $'На вас охотятся...'
+            ;;
+        
+        "bats")
+            echo $'Вы размешали котел.'
+            ;;
+        
+        "ghosts")
+            echo $'Мороз по коже пробежал...'
+            ;;
+        
+        "army_gjall")
+            echo $'Дарова, Гьялль!?'
+            ;;
+        
+        "hildirboss1")
+            echo $'Она вот-вот задаст Вам жару.'
+            ;;
+        
+        "hildirboss2")
+            echo $'По Вам пробежал холодок.'
+            ;;
+        
+        "hildirboss3")
+            echo $'Они были братанами, парень...'
+            ;;
+        
+        "army_seekers")
+            echo $'Они ищут вас.'
             ;;
         
         *)
