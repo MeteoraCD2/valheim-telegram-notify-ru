@@ -223,7 +223,7 @@ while read line ; do
         fi
     fi
     
-    #Проверка ресурсов хоста
+    #Вызов проверок ресурсов хоста
     current_time=$(date +%s)
     if (( current_time - last_check_time >= CHECK_INTERVAL )); then
         check_disk_space
