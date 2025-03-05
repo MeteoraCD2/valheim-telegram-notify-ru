@@ -1,40 +1,11 @@
 #!/bin/bash
 
-### Valheim Notify — это простой BASH-скрипт, который отправляет уведомления сервера Valheim в чат Telegram. Он нацелен на простоту использования и должен работать на большинстве разновидностей Linux.
-### Скрипт знает только о 8 событиях, которые можно проанализировать из журнала консоли сервера:
-### 1. Игрок присоединился.
-### 2. Игрок отключился.
-### 3. Игрок заспавнился.
-### 4. Игрок умер.
-### 5. Все игроки в сети легли спать, чтобы пропустить ночь, и начался новый день.
-### 6. Запускается случайное событие, см. https://valheim.fandom.com/wiki/Events
-### 7. Запуск сервера и загрузка мира.
-### 8. Выключение сервера.
-###
-### Вам нужно настроить CHATID, THREAD_ID, KEY и LOGFILE
-###
-### Скрипт будет искать 64-битные Steam ID, которые подключаются к серверу
-### Соответствующее имя Steam хранится в usernames.txt
-### Вы также можете вручную добавлять Steam ID и (изменять) имена, скрипт не будет перезаписать
-### Для смерти персонажа и (возрождения) имя персонажа Valheim анализируется из сообщения журнала
-###
-### Запустите этот скрипт в фоновом режиме и/или добавьте его в cron (crontab -e), затем
-### @reboot /home/vhserver/valheim-notify/vh-notify.sh &
+KEY="0000000000:XXXXXXXxxxxxxxXXXXXXXXXxxxxxx"
+CHATID="-1234567890"
+THREAD_ID=""
+LOGFILE="/root/Valheim/logs/valheim_log.txt"
+USERLIST="/root/Valheim/usernames.txt"
 
-### Не забудьте добавить в скрипт запуска сервера в строку ./valheim_server.x86_64 ключ: -logfile "/Valheim-server/valheim_log.txt", где "/Valheim-server/valheim_log.txt" - путь к файлу лога.
-
-### Переменные:
-### CHATID="-0000000000000" - Укажите ID чата
-### THREAD_ID="1234" - Укажите ID потока, если необходимо отправлять в конкретную тему. Если это обычный чат, можно не указывать.
-### KEY="1231231231:XXxxXXxxXXxxXXxx" - ID бота
-### LOGFILE="./Valheim/logs/valheim_log.txt" - Путь к файлу лога
-
-CHATID="" # Укажите ID чата
-THREAD_ID=""  # Укажите ID потока, если необходимо отправлять в конкретную тему. Можно не указывать.
-KEY="" # ID бота
-LOGFILE="/Valheim-server/valheim_log.txt" # путь к файлу лога
-
-USERLIST="/Valheim-server/usernames.txt"
 TIMEOUT="10"
 URL="https://api.telegram.org/bot$KEY/sendMessage"
 STEAMURL="https://steamcommunity.com/profiles/"
@@ -167,6 +138,30 @@ eventmessage(){
     esac
 }
 
+# Проверка свободного места на диске
+check_disk_space() {
+    local threshold=1048576 # 1GB в килобайтах
+    local free_space=$(df -k / | awk 'NR==2 {print $4}')
+    
+    if [ "$free_space" -lt "$threshold" ]; then
+        local free_gb=$(echo "scale=2; $free_space/1024/1024" | bc)
+        send "⚠️ ВНИМАНИЕ: Мало места на диске! Свободно только ${free_gb} GB"
+    fi
+}
+
+# Проверка использования памяти
+check_memory_usage() {
+    local threshold=90 # процентов
+    local memory_usage=$(free | grep Mem | awk '{print $3/$2 * 100.0}')
+    memory_usage=${memory_usage%.*}
+    
+    if [ "$memory_usage" -gt "$threshold" ]; then
+        send "⚠️ ВНИМАНИЕ: Высокое использование памяти! Использовано ${memory_usage}%"
+    fi
+}
+
+CHECK_INTERVAL=300 #переменная интервала проверки занятой памяти и места на диске
+
 loadnames
 
 tail -Fqn0 $LOGFILE | \
@@ -187,14 +182,14 @@ while read line ; do
         fi
 
         if [[ $CLINE == *"handshake"* ]]; then
-            send "${CHARNAME} подключился к серверу"
+            send "${CHARNAME} подключился к серверу."
 
         elif [[ $CLINE == *"Closing"* ]]; then
-            send "$CHARNAME отключился от сервера"
+            send "$CHARNAME отключился от сервера."
 
         elif [[ $line == *"Load world"* ]]; then
             WORLDNAME=$(echo "$line" | grep -oP 'Load world \K(.+)')
-	    send "Сервер запустился (version $VALHEIMVERSION) и загрузил мир $WORLDNAME"
+	    send "✅ Сервер запускается (версия $VALHEIMVERSION). Мир $WORLDNAME загружен."
 
         elif [[ $line == *"day:"* ]]; then
             DAY=$(echo "$line" | grep -oP 'day:\K(\d+)')
@@ -202,7 +197,7 @@ while read line ; do
             send "Все игроки легли спать. Наступил день $DAY"
 
         elif [[ $line == *"OnApplicationQuit"* ]]; then
-            send "Сервер выключился."
+            send "⏹ Сервер выключается."
 
         elif [[ $CLINE == *"Random event"* ]]; then
             EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
@@ -221,10 +216,18 @@ while read line ; do
                 send "$CHARNAME погиб."
 
             else
-                send "$CHARNAME заспавнился."
+                send "$CHARNAME Появился."
 
             fi
 
         fi
+    fi
+    
+    #Проверка ресурсов хоста
+    current_time=$(date +%s)
+    if (( current_time - last_check_time >= CHECK_INTERVAL )); then
+        check_disk_space
+        check_memory_usage
+        last_check_time=$current_time
     fi
 done
