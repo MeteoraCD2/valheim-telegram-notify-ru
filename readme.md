@@ -16,6 +16,8 @@ Valheim Telegram Notify — это простой скрипт на bash, кот
 10. Недостаточно места на диске.
 11. Необходимость обновления сервера
 
+Если нужно отключить уведомления о каком-то событии, просто закомментируйте блок, отвечающий за проверку нужного события.
+
 ## Подготовка
 ### Чтобы Valheim сохранял файл лога, в скрипт запуска сервера нужно добавить параметр -logfile. Пример:  
 `./valheim_server.x86_64 -name "My server" -port 2456 -world "Dedicated" -password "secret" -crossplay -logfile "/root/Valheim-server/logs/valheim_log.txt"`
