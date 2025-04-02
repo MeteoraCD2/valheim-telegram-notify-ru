@@ -206,7 +206,23 @@ while read line ; do
 
         elif [[ $CLINE == *"Valheim version"* ]]; then
             VALHEIMVERSION=$(echo "$line" | grep -oP 'Valheim version:\K(.+)')
-        
+	    
+	# Проверка конфликта версий
+        elif [[ $CLINE == *"Network version check"* ]]; then
+            # Сохраняем версии клиента и сервера
+            SERVER_VERSION=$(echo "$CLINE" | grep -oP 'mine:(\d+)' | cut -d':' -f2)
+            CLIENT_VERSION=$(echo "$CLINE" | grep -oP 'their:(\d+)' | cut -d':' -f2)
+
+            # Ждем строку "incompatible version" для подтверждения несовместимости
+            read -t 5 NEXT_LINE
+            if [[ $NEXT_LINE == *"incompatible version"* ]]; then
+                # Подтверждаем, что сервер старее клиента
+                if [[ $CLIENT_VERSION -gt $SERVER_VERSION ]]; then
+                    ## отправка уведомления об устаревшем сервере
+                    send "⚠️ Игрок ${CHARNAME} подключился с версией ${CLIENT_VERSION}, версия сервера ${SERVER_VERSION}. Необходимо обновление сервера!"
+                fi
+            fi
+
         else
             # Only ZOID options left, if ends with in 0:0 then player died, otherwise spawned
             CHARNAME=$(echo "$CLINE" | grep -oP 'ZDOID from \K(.+)(?= :)')
