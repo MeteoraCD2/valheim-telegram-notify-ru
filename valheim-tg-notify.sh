@@ -227,7 +227,7 @@ check_disk_space() {
         # Конвертируем килобайты в гигабайты для читаемости
         local free_gb=$(echo "scale=2; $free_space/1024/1024" | bc 2>/dev/null || echo "0")
         log_message "Предупреждение: Мало места на диске! Свободно только ${free_gb} GB"
-        send "$(eval echo "$MSG_DISK_SPACE_WARNING")"
+        send "$(eval echo -e "$MSG_DISK_SPACE_WARNING")"
     fi
 }
 
@@ -240,7 +240,7 @@ check_memory_usage() {
     # Если использование памяти превышает порог, отправляем предупреждение
     if [ "$memory_usage" -gt "$threshold" ]; then
         log_message "Предупреждение: Высокое использование памяти! Использовано ${memory_usage}%"
-        send "$(eval echo "$MSG_MEMORY_USAGE_WARNING")"
+        send "$(eval echo -e "$MSG_MEMORY_USAGE_WARNING")"
     fi
 }
 
@@ -288,28 +288,36 @@ while read line ; do
         fi
         
     elif [[ $line == *"Got character ZDOID from"* ]]; then
-        # Игрок успешно вошел (получил персонажа после ввода пароля)
-        CHARACTER_NAME=$(echo "$line" | grep -oP 'Got character ZDOID from \K[^:]+')
-        ZDOID=$(echo "$line" | grep -oP 'Got character ZDOID from [^:]+ : \K[0-9:]+')
-        
-        # Ищем SteamID для этого персонажа
-        STEAMID_FOR_EVENT=""
-        
-        # Проверяем, есть ли сохраненный SteamID для этого персонажа
-        if [[ -n "${CHARACTER_TO_STEAMID[$CHARACTER_NAME]}" ]]; then
-            STEAMID_FOR_EVENT="${CHARACTER_TO_STEAMID[$CHARACTER_NAME]}"
-        else
-            # Если нет, пытаемся найти последний SteamID
-            # Ищем в LAST_STEAMID_FOR_CLIENT
-            for sid in "${!LAST_STEAMID_FOR_CLIENT[@]}"; do
-                if [[ -n "$sid" ]]; then
-                    STEAMID_FOR_EVENT="$sid"
-                    break
-                fi
-            done
-        fi
-        
-        if [[ -n "$STEAMID_FOR_EVENT" ]]; then
+    # Игрок успешно вошел (получил персонажа после ввода пароля)
+    CHARACTER_NAME=$(echo "$line" | grep -oP 'Got character ZDOID from \K[^:]+')
+    ZDOID=$(echo "$line" | grep -oP 'Got character ZDOID from [^:]+ : \K[0-9:]+')
+    
+    # Проверяем, является ли ZDOID "пустым" (0:0) - это означает выход или удаление персонажа
+    if [[ "$ZDOID" == "0:0" ]]; then
+        log_message "Получен пустой ZDOID для персонажа $CHARACTER_NAME, игнорируем"
+        continue
+    fi
+    
+    # Ищем SteamID для этого персонажа
+    STEAMID_FOR_EVENT=""
+    
+    # Проверяем, есть ли сохраненный SteamID для этого персонажа
+    if [[ -n "${CHARACTER_TO_STEAMID[$CHARACTER_NAME]}" ]]; then
+        STEAMID_FOR_EVENT="${CHARACTER_TO_STEAMID[$CHARACTER_NAME]}"
+    else
+        # Если нет, пытаемся найти последний SteamID
+        # Ищем в LAST_STEAMID_FOR_CLIENT
+        for sid in "${!LAST_STEAMID_FOR_CLIENT[@]}"; do
+            if [[ -n "$sid" ]]; then
+                STEAMID_FOR_EVENT="$sid"
+                break
+            fi
+        done
+    fi
+    
+    if [[ -n "$STEAMID_FOR_EVENT" ]]; then
+        # Проверяем, не был ли этот игрок уже аутентифицирован
+        if [[ "${AUTHENTICATED_PLAYERS[$STEAMID_FOR_EVENT]}" != "true" ]]; then
             PLAYER_NAME_FOR_EVENT="$(charname "$STEAMID_FOR_EVENT")"
             log_message "Игрок вошел на сервер: $PLAYER_NAME_FOR_EVENT ($STEAMID_FOR_EVENT) с персонажем $CHARACTER_NAME"
             
@@ -322,12 +330,30 @@ while read line ; do
             # Удаляем из временного хранилища
             unset LAST_STEAMID_FOR_CLIENT["$STEAMID_FOR_EVENT"]
             
-            # Отправляем сообщение
-            send "$(eval echo "$MSG_PLAYER_JOINED")"
+            # Отправляем сообщение только если игрок еще не был аутентифицирован
+            export PLAYER_NAME_FOR_EVENT CHARACTER_NAME
+            send "$(eval echo -e "$MSG_PLAYER_JOINED")"
         else
-            log_message "Игрок вошел на сервер: Неизвестный игрок с персонажем $CHARACTER_NAME"
-            send "$(eval echo "$MSG_UNKNOWN_PLAYER_JOINED")"
+            log_message "Игрок уже аутентифицирован: $PLAYER_NAME_FOR_EVENT ($STEAMID_FOR_EVENT) с персонажем $CHARACTER_NAME, ZDOID: $ZDOID"
         fi
+    else
+        # Проверяем, не был ли этот игрок уже аутентифицирован
+        local player_already_joined=false
+        for char in "${!CHARACTER_TO_STEAMID[@]}"; do
+            if [[ "$char" == "$CHARACTER_NAME" ]]; then
+                player_already_joined=true
+                break
+            fi
+        done
+        
+        if [[ "$player_already_joined" != "true" ]]; then
+            log_message "Игрок вошел на сервер: Неизвестный игрок с персонажем $CHARACTER_NAME"
+            export CHARACTER_NAME
+            send "$(eval echo -e "$MSG_UNKNOWN_PLAYER_JOINED")"
+        else
+            log_message "Неизвестный игрок уже вошел на сервер с персонажем $CHARACTER_NAME"
+        fi
+    fi
         
     elif [[ $line == *"Closing socket"* ]] || [[ $line == *"Disconnecting socket"* ]]; then
         # Ищем SteamID в строке отключения
@@ -345,7 +371,7 @@ while read line ; do
                 log_message "Игрок отключился: $PLAYER_NAME ($DISCONNECT_STEAMID) с персонажем $CHARACTER_NAME_FOR_EVENT"
                 # Экспортируем переменные для использования в сообщении
                 export PLAYER_NAME CHARACTER_NAME_FOR_EVENT
-                send "$(eval echo "$MSG_PLAYER_LEFT")"
+                send "$(eval echo -e "$MSG_PLAYER_LEFT")"
                 # Удаляем игрока из массива отслеживания
                 unset AUTHENTICATED_PLAYERS["$DISCONNECT_STEAMID"]
                 # Удаляем связь персонаж-steamid
@@ -367,13 +393,14 @@ while read line ; do
     elif [[ $line == *"Load world"* ]]; then
         WORLDNAME=$(echo "$line" | grep -oP 'Load world \K(.+)')
         log_message "Загружен мир: $WORLDNAME"
-        send "$(eval echo "$MSG_SERVER_STARTING")"
+        send "$(eval echo -e "$MSG_SERVER_STARTING")"
 
     elif [[ $line == *"day:"* ]]; then
         DAY=$(echo "$line" | grep -oP 'day:\K(\d+)')
         DAY=$((DAY + 1))
         log_message "Наступил день: $DAY"
-        send "$(eval echo "$MSG_NEW_DAY")"
+        export DAY
+        send "$(eval echo -e "$MSG_NEW_DAY")"
 
     elif [[ $line == *"OnApplicationQuit"* ]]; then
         log_message "Сервер выключается"
@@ -383,7 +410,7 @@ while read line ; do
         EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
         EVENTMSG="$(eventmessage ${EVENT})"
         log_message "Начался рейд: $EVENT"
-        send "$(eval echo "$MSG_RAID_STARTED")"
+        send "$(eval echo -e "$MSG_RAID_STARTED")"
 
     elif [[ $line == *"Valheim version"* ]]; then
         VALHEIMVERSION=$(echo "$line" | grep -oP 'Valheim version:\K(.+)')
@@ -403,7 +430,7 @@ while read line ; do
                     if [[ -n "$VERSION_CHECK_STEAMID" ]]; then
                         PLAYER_NAME="$(charname "$VERSION_CHECK_STEAMID")"
                         log_message "Обнаружена несовместимость версий! Требуется обновление сервера."
-                        send "$(eval echo "$MSG_VERSION_MISMATCH")"
+                        send "$(eval echo -e "$MSG_VERSION_MISMATCH")"
                     fi
                 fi
             fi
