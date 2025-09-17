@@ -20,7 +20,7 @@ Valheim Telegram Notify — это простой скрипт на bash, кот
 
 ## Подготовка
 ### Чтобы Valheim сохранял файл лога, в скрипт запуска сервера нужно добавить ключ -logfile. Пример:  
-`./valheim_server.x86_64 -name "My server" -port 2456 -world "Dedicated" -password "secret" -crossplay -logfile "/valheim-server/logs/valheim_log.txt"`  
+`./valheim_server.x86_64 -name "My server" -port 2456 -world "Dedicated" -password "secret" -logfile "/valheim-server/logs/valheim_log.txt"`  
 
 ### Предварительные требования для Telegram
 Вам нужно создать телеграм-бота, добавить его в чат и получить ID этого чата.  
@@ -71,4 +71,5 @@ Valheim Telegram Notify — это простой скрипт на bash, кот
 ## Имена пользователей Steam
 Сообщения о подключении и отключении в журнале сервера упоминают 64-битный Steam ID игрока, подключающегося к серверу. Скрипт попытается найти этот Steam ID и сохранит ID вместе с именем пользователя в usernames.txt. Если скрипт не найдет соответствующий Steam ID в usernames.txt, он сообщит ``Неизвестный (Steam ID)`` в уведомлении.  
 Сообщения о смерти и (пере)рождении в журнале упоминают имя персонажа Valheim, с которым игрок вошел в мир, поэтому скрипт непосредственно парсит их из журнала.
+
 
