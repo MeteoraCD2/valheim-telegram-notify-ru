@@ -227,7 +227,7 @@ check_disk_space() {
         # Конвертируем килобайты в гигабайты для читаемости
         local free_gb=$(echo "scale=2; $free_space/1024/1024" | bc 2>/dev/null || echo "0")
         log_message "Предупреждение: Мало места на диске! Свободно только ${free_gb} GB"
-        send "$(eval echo -e "$MSG_DISK_SPACE_WARNING")"
+        eval "send \"$(echo -e "$MSG_DISK_SPACE_WARNING")"
     fi
 }
 
@@ -240,7 +240,7 @@ check_memory_usage() {
     # Если использование памяти превышает порог, отправляем предупреждение
     if [ "$memory_usage" -gt "$threshold" ]; then
         log_message "Предупреждение: Высокое использование памяти! Использовано ${memory_usage}%"
-        send "$(eval echo -e "$MSG_MEMORY_USAGE_WARNING")"
+        eval "send \"$(echo -e "$MSG_MEMORY_USAGE_WARNING")"
     fi
 }
 
@@ -332,13 +332,13 @@ while read line ; do
             
             # Отправляем сообщение только если игрок еще не был аутентифицирован
             export PLAYER_NAME_FOR_EVENT CHARACTER_NAME
-            send "$(eval echo -e "$MSG_PLAYER_JOINED")"
+            eval "send \"$(echo -e "$MSG_PLAYER_JOINED")"
         else
             log_message "Игрок уже аутентифицирован: $PLAYER_NAME_FOR_EVENT ($STEAMID_FOR_EVENT) с персонажем $CHARACTER_NAME, ZDOID: $ZDOID"
         fi
     else
         # Проверяем, не был ли этот игрок уже аутентифицирован
-        local player_already_joined=false
+        player_already_joined=false
         for char in "${!CHARACTER_TO_STEAMID[@]}"; do
             if [[ "$char" == "$CHARACTER_NAME" ]]; then
                 player_already_joined=true
@@ -349,7 +349,7 @@ while read line ; do
         if [[ "$player_already_joined" != "true" ]]; then
             log_message "Игрок вошел на сервер: Неизвестный игрок с персонажем $CHARACTER_NAME"
             export CHARACTER_NAME
-            send "$(eval echo -e "$MSG_UNKNOWN_PLAYER_JOINED")"
+            eval "send \"$(echo -e "$MSG_UNKNOWN_PLAYER_JOINED")"
         else
             log_message "Неизвестный игрок уже вошел на сервер с персонажем $CHARACTER_NAME"
         fi
@@ -371,7 +371,7 @@ while read line ; do
                 log_message "Игрок отключился: $PLAYER_NAME ($DISCONNECT_STEAMID) с персонажем $CHARACTER_NAME_FOR_EVENT"
                 # Экспортируем переменные для использования в сообщении
                 export PLAYER_NAME CHARACTER_NAME_FOR_EVENT
-                send "$(eval echo -e "$MSG_PLAYER_LEFT")"
+                eval "send \"$(echo -e "$MSG_PLAYER_LEFT")"
                 # Удаляем игрока из массива отслеживания
                 unset AUTHENTICATED_PLAYERS["$DISCONNECT_STEAMID"]
                 # Удаляем связь персонаж-steamid
@@ -393,24 +393,29 @@ while read line ; do
     elif [[ $line == *"Load world"* ]]; then
         WORLDNAME=$(echo "$line" | grep -oP 'Load world \K(.+)')
         log_message "Загружен мир: $WORLDNAME"
-        send "$(eval echo -e "$MSG_SERVER_STARTING")"
+        eval "send \"$(echo -e "$MSG_SERVER_STARTING")\""
 
     elif [[ $line == *"day:"* ]]; then
         DAY=$(echo "$line" | grep -oP 'day:\K(\d+)')
         DAY=$((DAY + 1))
         log_message "Наступил день: $DAY"
         export DAY
-        send "$(eval echo -e "$MSG_NEW_DAY")"
+        eval "send \"$(echo -e "$MSG_NEW_DAY")"
 
     elif [[ $line == *"OnApplicationQuit"* ]]; then
         log_message "Сервер выключается"
         send "$MSG_SERVER_SHUTDOWN"
+    
+    elif [[ $line == *"Opened Steam server"* ]]; then
+        log_message "Сервер запустился"
+        send "$MSG_SERVER_STARTING"
 
     elif [[ $line == *"Random event"* ]]; then
-        EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
-        EVENTMSG="$(eventmessage ${EVENT})"
-        log_message "Начался рейд: $EVENT"
-        send "$(eval echo -e "$MSG_RAID_STARTED")"
+    EVENT=$(echo "$line" | grep -oP 'Random event set:\K([0-9a-zA-Z_]+)')
+    EVENTMSG="$(eventmessage ${EVENT})" # Получаем сообщение
+    log_message "Начался рейд: $EVENT"
+    export EVENTMSG
+    send "$MSG_RAID_STARTED"
 
     elif [[ $line == *"Valheim version"* ]]; then
         VALHEIMVERSION=$(echo "$line" | grep -oP 'Valheim version:\K(.+)')
@@ -430,7 +435,7 @@ while read line ; do
                     if [[ -n "$VERSION_CHECK_STEAMID" ]]; then
                         PLAYER_NAME="$(charname "$VERSION_CHECK_STEAMID")"
                         log_message "Обнаружена несовместимость версий! Требуется обновление сервера."
-                        send "$(eval echo -e "$MSG_VERSION_MISMATCH")"
+                        eval "send \"$(echo -e "$MSG_VERSION_MISMATCH")"
                     fi
                 fi
             fi
